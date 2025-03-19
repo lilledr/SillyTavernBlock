@@ -1,0 +1,8 @@
+{
+  "id": "websiteblock",
+  "name": "Website Blocker",
+  "description": "Blocks access to specific websites based on AI responses.",
+  "version": "1.0",
+  "author": "lilledr",
+  "entrypoint": "websiteblock.js"
+}
