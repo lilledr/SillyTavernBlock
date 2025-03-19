@@ -4,7 +4,6 @@ let blockedSites = [];
 // Function to update blocked/unblocked sites
 function updateBlocklist(response) {
     let modified = false;
-    let message = "";
 
     // Block websites
     const blockMatches = response.match(/\[BLOCK:\s*([\w.-]+)\]/g);
@@ -14,7 +13,6 @@ function updateBlocklist(response) {
             if (!blockedSites.includes(site)) {
                 blockedSites.push(site);
                 console.log(`🔴 Blocked: ${site}`);
-                message += `🔴 Blocked: ${site}\n`;
                 modified = true;
             }
         });
@@ -29,7 +27,6 @@ function updateBlocklist(response) {
             if (index !== -1) {
                 blockedSites.splice(index, 1);
                 console.log(`🟢 Unblocked: ${site}`);
-                message += `🟢 Unblocked: ${site}\n`;
                 modified = true;
             }
         });
@@ -38,9 +35,7 @@ function updateBlocklist(response) {
     if (modified) {
         // Save updated blockedSites list
         saveBlockedSites();
-
-        // Print message in SillyTavern chat
-        ST.chat.sendMessage(message.trim());
+        ST.chat.print("🔧 Blocklist updated!");
     }
 }
 
@@ -57,10 +52,25 @@ function loadBlockedSites() {
     }
 }
 
-// Load sites when script starts
-loadBlockedSites();
+// Wait until SillyTavern hooks are ready before initializing
+function waitForHooks() {
+    if (typeof hooks !== "undefined" && hooks.onResponse) {
+        console.log("✅ Hooks detected, initializing script...");
+        initBlockingScript();
+    } else {
+        console.log("⏳ Waiting for hooks...");
+        setTimeout(waitForHooks, 500);
+    }
+}
 
-// Hook into AI response processing
-hooks.onResponse.push((response) => {
-    updateBlocklist(response);
-});
+// Function to initialize blocking script
+function initBlockingScript() {
+    loadBlockedSites();
+    hooks.onResponse.push((response) => {
+        updateBlocklist(response);
+    });
+    console.log("🚀 Blocking script initialized!");
+}
+
+// Start waiting for hooks to be ready
+waitForHooks();
