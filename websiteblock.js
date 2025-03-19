@@ -1,53 +1,71 @@
 const fs = require('fs');
 const path = require('path');
 
-const BLOCKLIST_PATH = path.join(__dirname, 'blocked_websites.json');
+// Set the blocklist file path (adjust for your system)
+const BLOCKLIST_PATH = "D:\\Random\\PythonStuff\\AIThings\\blocked_websites.json";
 
-// Ensure the blocklist file exists
-function ensureBlocklistExists() {
-    if (!fs.existsSync(BLOCKLIST_PATH)) {
-        fs.writeFileSync(BLOCKLIST_PATH, '[]', 'utf8');
+// Ensure the file exists
+if (!fs.existsSync(BLOCKLIST_PATH)) {
+    fs.writeFileSync(BLOCKLIST_PATH, JSON.stringify([]));
+}
+
+// Function to load blocked sites
+function loadBlockedSites() {
+    try {
+        return JSON.parse(fs.readFileSync(BLOCKLIST_PATH, 'utf8'));
+    } catch (err) {
+        console.error("Error reading blocklist:", err);
+        return [];
     }
 }
 
-// Function to block websites
-function addBlockedWebsites(sites) {
-    ensureBlocklistExists();
-    let blocklist = JSON.parse(fs.readFileSync(BLOCKLIST_PATH, 'utf8'));
-
-    let newEntries = sites.filter(site => !blocklist.includes(site));
-    if (newEntries.length > 0) {
-        blocklist.push(...newEntries);
-        fs.writeFileSync(BLOCKLIST_PATH, JSON.stringify(blocklist, null, 2), 'utf8');
-        console.log(`Blocked: ${newEntries.join(', ')}`);
+// Function to save blocked sites
+function saveBlockedSites(blockedSites) {
+    try {
+        fs.writeFileSync(BLOCKLIST_PATH, JSON.stringify(blockedSites, null, 2));
+    } catch (err) {
+        console.error("Error saving blocklist:", err);
     }
 }
 
-// Function to unblock websites
-function removeBlockedWebsites(sites) {
-    ensureBlocklistExists();
-    let blocklist = JSON.parse(fs.readFileSync(BLOCKLIST_PATH, 'utf8'));
+// Function to update blocklist based on AI response
+function updateBlocklist(text) {
+    let blockedSites = loadBlockedSites();
+    let modified = false;
 
-    let updatedBlocklist = blocklist.filter(site => !sites.includes(site));
-    if (updatedBlocklist.length !== blocklist.length) {
-        fs.writeFileSync(BLOCKLIST_PATH, JSON.stringify(updatedBlocklist, null, 2), 'utf8');
-        console.log(`Unblocked: ${sites.join(', ')}`);
-    }
-}
-
-// Hook into SillyTavern's message system
-hook.onMessage((message) => {
-    // Match all [BLOCK: example.com] entries
-    const blockMatches = message.match(/\[BLOCK:\s*([^\]]+)\]/g);
+    // Block new sites
+    const blockMatches = text.match(/\[BLOCK:\s*([\w.-]+)\]/g);
     if (blockMatches) {
-        const sitesToBlock = blockMatches.map(match => match.replace(/\[BLOCK:\s*|\]/g, '').trim());
-        addBlockedWebsites(sitesToBlock);
+        blockMatches.forEach(match => {
+            const site = match.replace(/\[BLOCK:\s*|\]/g, "").trim();
+            if (!blockedSites.includes(site)) {
+                blockedSites.push(site);
+                console.log(`Blocked: ${site}`);
+                modified = true;
+            }
+        });
     }
 
-    // Match all [UNBLOCK: example.com] entries
-    const unblockMatches = message.match(/\[UNBLOCK:\s*([^\]]+)\]/g);
+    // Unblock sites
+    const unblockMatches = text.match(/\[UNBLOCK:\s*([\w.-]+)\]/g);
     if (unblockMatches) {
-        const sitesToUnblock = unblockMatches.map(match => match.replace(/\[UNBLOCK:\s*|\]/g, '').trim());
-        removeBlockedWebsites(sitesToUnblock);
+        unblockMatches.forEach(match => {
+            const site = match.replace(/\[UNBLOCK:\s*|\]/g, "").trim();
+            const index = blockedSites.indexOf(site);
+            if (index !== -1) {
+                blockedSites.splice(index, 1);
+                console.log(`Unblocked: ${site}`);
+                modified = true;
+            }
+        });
     }
+
+    if (modified) {
+        saveBlockedSites(blockedSites);
+    }
+}
+
+// Hook into SillyTavern's AI response
+hooks.onResponse.push((response) => {
+    updateBlocklist(response);
 });
