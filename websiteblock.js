@@ -4,6 +4,7 @@ let blockedSites = [];
 // Function to update blocked/unblocked sites
 function updateBlocklist(response) {
     let modified = false;
+    let message = "";
 
     // Block websites
     const blockMatches = response.match(/\[BLOCK:\s*([\w.-]+)\]/g);
@@ -13,6 +14,7 @@ function updateBlocklist(response) {
             if (!blockedSites.includes(site)) {
                 blockedSites.push(site);
                 console.log(`🔴 Blocked: ${site}`);
+                message += `🔴 Blocked: ${site}\n`;
                 modified = true;
             }
         });
@@ -27,6 +29,7 @@ function updateBlocklist(response) {
             if (index !== -1) {
                 blockedSites.splice(index, 1);
                 console.log(`🟢 Unblocked: ${site}`);
+                message += `🟢 Unblocked: ${site}\n`;
                 modified = true;
             }
         });
@@ -35,6 +38,9 @@ function updateBlocklist(response) {
     if (modified) {
         // Save updated blockedSites list
         saveBlockedSites();
+
+        // Print message in SillyTavern chat
+        ST.chat.sendMessage(message.trim());
     }
 }
 
